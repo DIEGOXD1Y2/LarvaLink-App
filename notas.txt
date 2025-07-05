@@ -1,5 +1,7 @@
 En la carpeta Mosca ejecuta 
+    rm -rf node_modules package-lock.json
     npm install
+    npm install @react-native-community/cli-server-api --save-dev
     npm install axios react-native-chart-kit react-native-svg
 Y en la carpeta backend-serve ejecuta 
     npm install
