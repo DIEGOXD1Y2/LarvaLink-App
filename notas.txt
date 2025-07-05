@@ -1,0 +1,7 @@
+En la carpeta Mosca ejecuta 
+    npm install
+    npm install axios react-native-chart-kit react-native-svg
+Y en la carpeta backend-serve ejecuta 
+    npm install
+    npm install express mongoose cors 
+
