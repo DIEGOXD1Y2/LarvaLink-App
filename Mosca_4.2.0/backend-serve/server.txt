@@ -1,0 +1,139 @@
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+
+const app = express();
+const PORT = 3000;
+
+app.use(cors());
+app.use(express.json());
+
+// ✅ Conexión a MongoDB Atlas
+
+mongoose.connect('mongodb+srv://Danigenerico05:HopelessSoul@danigenerico05.8cv9cf2.mongodb.net//ConMongoDB?retryWrites=true&w=majority')
+  .then(() => console.log('Conectado a MongoDB Atlas'))
+  .catch((err) => console.error('Error de conexión a MongoDB:', err));
+
+// ✅ Esquema para lecturas
+const LecturaSchema = new mongoose.Schema({
+  _id: String,
+  temperatura: Number,
+  humedad: Number,
+  fecha: Date,
+});
+const Lectura = mongoose.model('lecturas', LecturaSchema);
+
+// ✅ Esquema para incubadora
+const IncubadoraSchema = new mongoose.Schema({
+  _id: Number,
+  temperActual: Number,
+  humedActual: Number,
+  estSensorHum: Boolean,
+  estSensorTemp: Boolean,
+  estVentilador: Boolean,
+  estHumificador: Boolean,
+  estCalefactor: Boolean,
+  configuracionRango: {
+    tempMin: Number,
+    tempMax: Number,
+    humedadMin: Number,
+    humedadMax: Number,
+  },
+});
+const incubadora = mongoose.model('incubadora', IncubadoraSchema);
+
+// ✅ Ruta para obtener lecturas (opcionalmente por fecha)
+app.get('/lecturas', async (req, res) => {
+  try {
+    const { fecha } = req.query;
+    let lecturas;
+
+    if (fecha) {
+      const inicioDelDia = new Date(fecha);
+      inicioDelDia.setHours(0, 0, 0, 0);
+
+      const finDelDia = new Date(fecha);
+      finDelDia.setHours(23, 59, 59, 999);
+
+      lecturas = await Lectura.find({
+        fecha: { $gte: inicioDelDia, $lte: finDelDia }
+      }).sort({ fecha: 1 });
+    } else {
+      lecturas = await Lectura.find().sort({ fecha: 1 });
+    }
+
+    res.json(lecturas);
+  } catch (err) {
+    console.error('Error al obtener lecturas:', err);
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
+// ✅ Ruta para obtener datos de la incubadora
+app.get('/incubadora', async (req, res) => {
+  try {
+    const datos = await incubadora.findOne({ _id: 1 });
+    if (!datos) {
+      return res.status(404).json({ error: 'No se encontró la incubadora con id 1' });
+    }
+    res.json(datos);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ✅ Ruta para actualizar configuración de rangos
+app.put('/incubadora/:id/configuracion', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { tempMin, tempMax, humedadMin, humedadMax } = req.body;
+
+    const resultado = await incubadora.findByIdAndUpdate(
+      id,
+      {
+        $set: {
+          "configuracionRango.tempMin": tempMin,
+          "configuracionRango.tempMax": tempMax,
+          "configuracionRango.humedadMin": humedadMin,
+          "configuracionRango.humedadMax": humedadMax
+        }
+      },
+      { new: true }
+    );
+
+    if (!resultado) {
+      return res.status(404).json({ error: "Incubadora no encontrada" });
+    }
+
+    res.json(resultado);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ✅ Ruta para actualizar campos booleanos
+app.put('/incubadora/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const camposActualizar = req.body;
+
+    const resultado = await incubadora.findByIdAndUpdate(
+      id,
+      { $set: camposActualizar },
+      { new: true }
+    );
+
+    if (!resultado) {
+      return res.status(404).json({ error: 'Incubadora no encontrada' });
+    }
+
+    res.json(resultado);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ✅ Iniciar servidor
+app.listen(PORT, () => {
+  console.log(`Servidor corriendo en http://localhost:${PORT}`);
+});
