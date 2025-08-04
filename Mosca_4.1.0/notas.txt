@@ -1,0 +1,21 @@
+En la carpeta Mosca ejecuta 
+    npm install
+    npm install axios react-native-chart-kit react-native-svg
+    npm install react-native-keyboard-aware-scroll-view
+    npm install victory-native@35.3.1
+    npx expo install react-native-svg
+    expo install @react-native-picker/picker
+    npm install bcrypt
+    npm install react-native-view-shot
+    npx pod-install
+    npx expo install expo-print expo-file-system
+    npx expo install expo-sharing
+    npm install react-native-vector-icons
+
+
+
+
+Y en la carpeta backend-serve ejecuta 
+    npm install
+    npm install express mongoose cors 
+
