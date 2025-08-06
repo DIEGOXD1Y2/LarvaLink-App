@@ -1,0 +1,343 @@
+
+// MODELO DE LA COLECCION USUARIOS
+const UsuarioSchema = new mongoose.Schema({
+  _id:            { type: Number, required: true },
+  nombre:         { type: String, required: true },
+  primerApell:    { type: String, required: true },
+  segundoApell:   { type: String, required: false },
+  numTel:         { type: String, required: false },
+  correo:         { type: String, required: true },
+  contrasena:     { type: String, required: true },
+  estado:         { type: Boolean, required: true },
+  idRol:          { type: Number, required: true }
+}, { collection: 'USUARIOS' });
+
+const Usuario = mongoose.model('USUARIOS', UsuarioSchema);
+
+//  MODELO DE LA COLECCION ROLES
+const RolSchema = new mongoose.Schema({
+  _id:        { type: Number, required: true },
+  nombreRol:  { type: String, required: true }
+}, { collection: 'ROLES' });
+
+const Rol = mongoose.model('ROLES', RolSchema);
+
+// MODELO DE LA COLECCION LOGNOTF OSEA LAS ALERTAS
+const AlertaSchema = new mongoose.Schema({
+  _id:              { type: mongoose.Schema.Types.ObjectId, required: true },
+  fechaHora:        { type: Date, required: true },
+  tipo:             { type: String, enum: ['temperatura', 'humedad'], required: true },
+  valor:            { type: Number, required: true },
+  umbral:           { type: Number, required: true },
+  condicion:        { type: String, enum: ['mayor', 'menor'], required: true },
+  idComponente:    { type: Number, required: true }, 
+  idInfoIncubadora: { type: Number, required: true }
+}, { collection: 'LOGNOTF' });
+
+const Alerta = mongoose.model('LOGNOTF', AlertaSchema);
+
+// MODELO DE LA COLECCION INFOINCUBADORA
+const InfoIncubadoraSchema = new mongoose.Schema({
+  _id:          { type: Number, required: true },
+  temperActual: { type: Number, required: true }, 
+  humedActual:  { type: Number, required: true },
+  idComponentes:   { type: [Number],required: true },
+}, { collection: 'INFOINCUBADORA' });
+
+const InfoIncubadora = mongoose.model('INFOINCUBADORA', InfoIncubadoraSchema);
+
+// MODELO DE LA COLECCION HISTORIALTEMP
+const HistorialTempSchema = new mongoose.Schema({
+  _id:              { type: mongoose.Schema.Types.ObjectId, required: true },
+  fechaRegistro:    { type: Date, required: true },
+  temperatura:      { type: Number, required: true },
+  idInfoIncubadora: { type: Number, required: true },
+  idComponente:     { type: Number, required: false }
+}, { collection: 'HISTORIALTEMP' });
+
+const HistorialTemp = mongoose.model('HISTORIALTEMP', HistorialTempSchema);
+
+// MODELO DE LA COLECCION HISTORIALHUM
+const HistorialHumSchema = new mongoose.Schema({
+  _id:              { type: mongoose.Schema.Types.ObjectId, required: true },
+  fechaRegistro:    { type: Date, required: true },
+  humedad:          { type: Number, required: true },
+  idInfoIncubadora: { type: Number, required: true },
+  idComponente:     { type: Number, required: false }
+}, { collection: 'HISTORIALHUM' });
+
+const HistorialHum = mongoose.model('HISTORIALHUM', HistorialHumSchema);
+
+// MODELO DE LA COLECCION EVENTOINCUBADORA
+const EventoIncubadoraSchema = new mongoose.Schema({
+  _id:            { type: mongoose.Schema.Types.ObjectId, required: true },
+  fechaDeIngreso: { type: Date, required: true },
+  fechaEstimada:  { type: Date, required: true },
+  fechaEclosion:  { type: Date, required: false }
+}, { collection: 'EVENTOINCUBA' });
+
+const Larva = mongoose.model('EVENTOINCUBA', EventoIncubadoraSchema);
+
+// MODELO DE LA COLECCION CONFIGURACIONTF
+const ConfiguracionSchema = new mongoose.Schema({
+  _id:              { type: Number, required: true },
+  tempMin:          { type: Number, required: true },
+  tempMax:          { type: Number, required: true },
+  humedadMin:       { type: Number, required: true },
+  humedadMax:       { type: Number, required: true },
+  idInfoIncubadora: { type: Number, required: true }
+}, { collection: 'CONFIGNOTF' });
+
+const Configuracion = mongoose.model('CONFIGNOTF', ConfiguracionSchema);
+
+// MODELO DE LA COLECCION COMPONENTES:
+const ComponenteSchema = new mongoose.Schema({
+  _id:              { type: Number, required: true },
+  nombreComponente: { type: String, required: true },
+  tipo: { 
+    type: String, 
+    enum: ['sensor', 'actuador'], 
+    required: true
+  },
+  estado:           { type: Boolean, required: true }
+}, { collection: 'COMPONENTES' });
+const Componente = mongoose.model('COMPONENTES', ComponenteSchema);
+
+
+
+//MODELO DE LA COLECCION ALERACTUADORES
+const HistorialActuadorSchema = new mongoose.Schema({
+  _id: { type: mongoose.Schema.Types.ObjectId, auto: true },
+  fechaRegistro:    { type: Date, required: true },
+  idComponente:       { type: Number, required: true },
+  idInfoIncubadora: { type: Number, required: true }
+}, { collection: 'ALERACTUADORES' });
+
+const AlertasComponentes = mongoose.model('ALERACTUADORES', HistorialActuadorSchema);
+
+
+
+// ENDPOINT PARA OBTENER ES ESTADO DE LOS ACTIVADORES
+app.get('/incubadoraiot/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ mensaje: 'ID inválido' });
+    }
+
+    // Traer todos los componentes (puedes agregar filtro por incubadora si luego lo necesitas)
+    const componentes = await Componente.find({});
+
+    const resultado = {
+      estVentilador: false,
+      estCalefactor: false,
+      estHumidificador: false
+    };
+
+    for (const comp of componentes) {
+      if (comp.tipo === 'actuador') {
+        const nombre = comp.nombreComponente.toLowerCase().replace(/\s+/g, '');
+
+        if (nombre.includes('ventilador')) {
+          resultado.estVentilador = comp.estado;
+        } else if (nombre.includes('calefactor')) {
+          resultado.estCalefactor = comp.estado;
+        } else if (nombre.includes('humificador') || nombre.includes('humidificador')) {
+          resultado.estHumidificador = comp.estado;
+        }
+      }
+    }
+
+    res.json(resultado);
+
+  } catch (error) {
+    console.error("Error al obtener los componentes:", error);
+    res.status(500).json({ mensaje: "Error en el servidor" });
+  }
+});
+
+
+/*
+HACER UN EDNPOINT PARA INSERTAN EN HISTORIALHUM Y EN HISTORIALTEM
+PARA EL COMPONENTE 1 Y EL CO2
+*/
+app.post('/api/registro/sensores', async (req, res) => {
+  try {
+    const {
+      fecha,
+      temperatura1,
+      humedad1,
+      temperatura2,
+      humedad2
+    } = req.body;
+
+    const idInfoIncubadora = 1; // Por defecto
+
+    const fechaRegistro = new Date(fecha);
+
+    // Crear documentos para insertar
+    const documentosTemp = [
+      {
+        _id: new mongoose.Types.ObjectId(),
+        fechaRegistro,
+        temperatura: temperatura1,
+        idInfoIncubadora,
+        idComponente: 1
+      },
+      {
+        _id: new mongoose.Types.ObjectId(),
+        fechaRegistro,
+        temperatura: temperatura2,
+        idInfoIncubadora,
+        idComponente: 2
+      }
+    ];
+
+    const documentosHum = [
+      {
+        _id: new mongoose.Types.ObjectId(),
+        fechaRegistro,
+        humedad: humedad1,
+        idInfoIncubadora,
+        idComponente: 1
+      },
+      {
+        _id: new mongoose.Types.ObjectId(),
+        fechaRegistro,
+        humedad: humedad2,
+        idInfoIncubadora,
+        idComponente: 2
+      }
+    ];
+
+    await HistorialTemp.insertMany(documentosTemp);
+    await HistorialHum.insertMany(documentosHum);
+
+    res.status(200).json({ message: 'Datos insertados correctamente' });
+  } catch (error) {
+    console.error('Error al insertar datos:', error);
+    res.status(500).json({ error: 'Error al insertar datos' });
+  }
+});
+/* 
+ Método: POST
+ URL para probarlo: 
+ http://172.18.2.213:3000/api/registro/sensores
+   CÓMO SE DEBE ENVIAR EL BODY (JSON):
+{
+  "fecha": "2025-08-04T19:00:00.000Z",
+  "temperatura1": 28.5,
+  "humedad1": 78,
+  "temperatura2": 29.1,
+  "humedad2": 80
+}
+  ¿QUÉ HACE ESTE ENDPOINT?
+    Inserta CUATRO registros en la base de datos:
+  🔹 Dos en la colección HISTORIALTEMP:
+      - Uno para el componente 1 (sensor 1) con temperatura1
+      - Otro para el componente 2 (sensor 2) con temperatura2
+  🔹 Dos en la colección HISTORIALHUM:
+      - Uno para el componente 1 (sensor 1) con humedad1
+      - Otro para el componente 2 (sensor 2) con humedad2
+
+*/
+
+app.post('/api/registro/oit', async (req, res) => {
+  try {
+    const {
+      temperatura1,
+      temperatura2,
+      humedad1,
+      humedad2
+    } = req.body;
+
+    const idInfoIncubadora = 1; // fijo
+
+    // Buscar la configuración de rangos para esta incubadora
+    const config = await Configuracion.findOne({ idInfoIncubadora });
+    if (!config) return res.status(404).json({ error: 'Configuración no encontrada' });
+
+    const fechaHora = new Date();
+    const alertas = [];
+
+    // Validar temperaturas
+    const validarTemp = (valor, idComponente) => {
+      if (valor < config.tempMin) {
+        alertas.push({
+          _id: new mongoose.Types.ObjectId(),
+          fechaHora,
+          tipo: 'temperatura',
+          valor,
+          umbral: config.tempMin,
+          condicion: 'menor',
+          idComponente,
+          idInfoIncubadora
+        });
+      } else if (valor > config.tempMax) {
+        alertas.push({
+          _id: new mongoose.Types.ObjectId(),
+          fechaHora,
+          tipo: 'temperatura',
+          valor,
+          umbral: config.tempMax,
+          condicion: 'mayor',
+          idComponente,
+          idInfoIncubadora
+        });
+      }
+    };
+
+    // Validar humedades
+    const validarHum = (valor, idComponente) => {
+      if (valor < config.humedadMin) {
+        alertas.push({
+          _id: new mongoose.Types.ObjectId(),
+          fechaHora,
+          tipo: 'humedad',
+          valor,
+          umbral: config.humedadMin,
+          condicion: 'menor',
+          idComponente,
+          idInfoIncubadora
+        });
+      } else if (valor > config.humedadMax) {
+        alertas.push({
+          _id: new mongoose.Types.ObjectId(),
+          fechaHora,
+          tipo: 'humedad',
+          valor,
+          umbral: config.humedadMax,
+          condicion: 'mayor',
+          idComponente,
+          idInfoIncubadora
+        });
+      }
+    };
+
+    // Aplicar validaciones
+    validarTemp(temperatura1, 1);
+    validarTemp(temperatura2, 2);
+    validarHum(humedad1, 1);
+    validarHum(humedad2, 2);
+
+    // Insertar todas las alertas encontradas
+    if (alertas.length > 0) {
+      await Alerta.insertMany(alertas);
+    }
+
+    res.status(200).json({
+      message: 'Datos procesados correctamente',
+      alertasGeneradas: alertas.length
+    });
+
+  } catch (error) {
+    console.error('Error en /api/registro/oit:', error);
+    res.status(500).json({ error: 'Error en el servidor' });
+  }
+});
+
+
+
+
+/*
+QUIERO HACER UN ENPOINT PARA OIT QUE OIT EL ESTE MANDANDO PRIMERO LA TEMPERATURA 1 DESPUES TEMPERATURA 2 DEPUES HUMEDAD 1 Y DESPUES HUMEDAD 2, SI LA TEMPERATURA ES MENOR O MAYOR AL ARANGO REGUN LA COLECCION CONFIGNOTF HARA UN INSERT EN LOGNOTF SI LA TEMPERATURA ES MENOR CAMBIA EL CALEFACTOR A TRUE (su IdComponete es el 5 ), SI LA TEMPERATURA ES MAYOR PRENDE EL VENTILADOR (su IdComponete es el 4), SI LA HUMEDAD ES MENOR CAMBIE EL HUMIFICADOR A TRUE (su IdComponete es el 3), DEPUSPUES DE HACER EN INSERT PARA LOGNOTF, VERIFICAR QUE PONER COMO TRUE, HACE UN INSERT EN ALERACTUADORES CON EL ID DEL COMPONETE QUE SE CAMBIO SU ESTADO.*/
